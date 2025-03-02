@@ -7,9 +7,12 @@ from services.webhook_service import trigger_webhook
 import os
 from dotenv import load_dotenv
 
+# Load environment variables
 load_dotenv()
 
-# Create a connection pool (adjust pool size as needed)
+# Database connection configuration
+# Using connection pooling to optimize database connections
+
 db_config = {
     "host": os.getenv("DB_HOST"),
     "user": os.getenv("DB_USER"),
@@ -17,7 +20,9 @@ db_config = {
     "database": os.getenv("DB_NAME"),
     "port": int(os.getenv("DB_PORT")),  # Convert port to integer
 }
+
 try:
+    # Create a connection pool to reuse database connections
     connection_pool = pooling.MySQLConnectionPool(
         pool_name=AppConstants.DATABASE_POOL_NAME,
         pool_size=AppConstants.DATABASE_POOL_SIZE,  
@@ -28,7 +33,7 @@ except mysql.connector.Error as e:
 
 
 def get_db_connection():
-    """Fetch a connection from the pool."""
+    """Fetch a connection from the database connection pool."""
     try:
         return connection_pool.get_connection()
     except mysql.connector.Error as e:
@@ -36,12 +41,12 @@ def get_db_connection():
 
 
 def add_request(request_id, product_name, input_image_url):
-    conn = None
-    cursor = None
+    """Insert a new request into the database."""
+    conn, cursor = None, None
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-
+        
         query = Queries.INSERT_REQUEST
         cursor.execute(query, (request_id, product_name, input_image_url, 'N'))
         conn.commit()
@@ -55,26 +60,27 @@ def add_request(request_id, product_name, input_image_url):
         if cursor:
             cursor.close()
         if conn:
-            conn.close()  # Returns connection to the pool
+            conn.close()
 
 
 def update_request(request_id, product_name, input_image_url, output_image_url):
-    conn = None
-    cursor = None
+    """Update request with the processed image output URL and trigger webhook if all images are processed."""
+    conn, cursor = None, None
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-
+        
         query = Queries.UPDATE_REQUEST
         cursor.execute(query, (output_image_url, request_id, product_name, input_image_url))
         conn.commit()
         
+        # Check if all images are processed
         cursor.execute(Queries.CHECK_REQUEST_COMPLETION, (request_id,))
-        remaining_images = cursor.fetchone()[0]  # Fetch count of pending images
+        remaining_images = cursor.fetchone()[0]
         
         if remaining_images == 0:
-            trigger_webhook(request_id)
-
+            trigger_webhook(request_id)  # Trigger webhook if all images are processed
+        
         return True
     except mysql.connector.Error as e:
         if conn:
@@ -88,15 +94,15 @@ def update_request(request_id, product_name, input_image_url, output_image_url):
 
 
 def get_request(request_id):
-    conn = None
-    cursor = None
+    """Retrieve request details from the database."""
+    conn, cursor = None, None
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)  # Fetch rows as dictionaries
-
+        
         query = Queries.GET_REQUEST
-        cursor.execute(query, (request_id,))  # Parameterized query
-
+        cursor.execute(query, (request_id,))
+        
         return cursor.fetchall()
     except mysql.connector.Error as e:
         raise DatabaseException(AppConstants.DATABASE_RETRIEVAL_ERROR + str(e))
@@ -108,15 +114,15 @@ def get_request(request_id):
 
 
 def create_image_processor_request_table():
-    conn = None
-    cursor = None
+    """Create the table for storing image processing requests."""
+    conn, cursor = None, None
     try:
         conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)  # Fetch rows as dictionaries
-
+        cursor = conn.cursor()
+        
         query = Queries.CREATE_IMAGE_PROCESSOR_REQUEST_TABLE
-        cursor.execute(query)  # Parameterized query
-
+        cursor.execute(query)
+        
     except mysql.connector.Error as e:
         raise DatabaseException(AppConstants.DATABASE_RETRIEVAL_ERROR + str(e))
     finally:
@@ -124,17 +130,18 @@ def create_image_processor_request_table():
             cursor.close()
         if conn:
             conn.close()
+
 
 def create_webhook_subscription_table():
-    conn = None
-    cursor = None
+    """Create the table for storing webhook subscriptions."""
+    conn, cursor = None, None
     try:
         conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)  # Fetch rows as dictionaries
-
+        cursor = conn.cursor()
+        
         query = Queries.CREATE_WEBHOOK_SUBSCRIPTION_TABLE
-        cursor.execute(query)  # Parameterized query
-
+        cursor.execute(query)
+        
     except mysql.connector.Error as e:
         raise DatabaseException(AppConstants.DATABASE_RETRIEVAL_ERROR + str(e))
     finally:
@@ -142,17 +149,17 @@ def create_webhook_subscription_table():
             cursor.close()
         if conn:
             conn.close()
-    
+
 
 def register_webhook(webhook_url, request_id):
-    conn = None
-    cursor = None
+    """Register a webhook URL for a specific request."""
+    conn, cursor = None, None
     try:
         conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)  # Fetch rows as dictionaries
-
+        cursor = conn.cursor()
+        
         query = Queries.INSERT_WEBHOOK_SUBSCRIPTION
-        cursor.execute(query, (webhook_url, request_id))  # Parameterized query
+        cursor.execute(query, (webhook_url, request_id))
         conn.commit()
         
         return True
@@ -168,15 +175,15 @@ def register_webhook(webhook_url, request_id):
 
 
 def get_webhook(request_id):
-    conn = None
-    cursor = None
+    """Retrieve the webhook URL for a given request ID."""
+    conn, cursor = None, None
     try:
         conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)  # Fetch rows as dictionaries
-
+        cursor = conn.cursor(dictionary=True)
+        
         query = Queries.GET_WEBHOOK_FROM_REQUEST_ID
-        cursor.execute(query, (request_id,))  # Parameterized query
-
+        cursor.execute(query, (request_id,))
+        
         return cursor.fetchone()
     except mysql.connector.Error as e:
         raise DatabaseException(AppConstants.DATABASE_RETRIEVAL_ERROR + str(e))
