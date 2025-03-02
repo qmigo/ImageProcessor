@@ -21,4 +21,5 @@ def process_request(request_id, product_name, input_image_url):
     output_image_url = upload_file(compressed_image)
     if output_image_url:
         update_request(request_id, product_name, input_image_url, output_image_url)
+
     

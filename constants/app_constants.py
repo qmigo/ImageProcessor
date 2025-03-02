@@ -5,12 +5,15 @@ class AppConstants:
     INVALID_CSV_EXCEPTION = 'Uploaded CSV file is not following the validations'
     EMPTY_CSV_FILE_EXCEPTION = 'Uploaded CSV file is empty'
     PARSING_CSV_EXCEPTION = 'Uploaded CSV file is not properly formatted'
+    INVALID_REQUEST_EXCEPTION = 'Invalid Request Id'
     DATABASE_CONNECTION_FAILURE = 'Failed to get a database connection'
     DATABASE_POOL_INITIALIZATION_FAILURE = 'Failed to initialize connection pool'
     DATABASE_INSERTION_ERROR = 'Error inserting request'
     DATABASE_UPDATE_ERROR = 'Error updating request'
     DATABASE_RETRIEVAL_ERROR = 'Error retrieving request'
+    WEBHOOK_URL_MISSING_ERROR = 'Web hook url is missing'
     IMAGE_COMPRESSION_FORMAT = 'jpeg'
     IMAGE_COMPRESS_RATIO = 50
     DATABASE_POOL_NAME = 'mypool'
-    DATABASE_POOL_SIZE = 10
+    DATABASE_POOL_SIZE = 20
+    MAX_THREAD_WORKERS = 10

@@ -11,7 +11,7 @@ def process_file(file_payload: FileStorage) -> list:
         if not validate_csv(df):
             raise InvalidCSVException(AppConstants.INVALID_CSV_EXCEPTION)
 
-        products = df.head().to_dict(orient='records')
+        products = df.to_dict(orient='records')
         return products
 
     except pd.errors.EmptyDataError:

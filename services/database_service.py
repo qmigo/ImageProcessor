@@ -3,6 +3,7 @@ from mysql.connector import pooling
 from exceptions.exceptions import DatabaseException
 from constants.app_constants import AppConstants
 from constants.queries import Queries  
+from services.webhook_service import trigger_webhook
 import os
 from dotenv import load_dotenv
 
@@ -68,6 +69,12 @@ def update_request(request_id, product_name, input_image_url, output_image_url):
         cursor.execute(query, (output_image_url, request_id, product_name, input_image_url))
         conn.commit()
         
+        cursor.execute(Queries.CHECK_REQUEST_COMPLETION, (request_id,))
+        remaining_images = cursor.fetchone()[0]  # Fetch count of pending images
+        
+        if remaining_images == 0:
+            trigger_webhook(request_id)
+
         return True
     except mysql.connector.Error as e:
         if conn:
@@ -91,6 +98,86 @@ def get_request(request_id):
         cursor.execute(query, (request_id,))  # Parameterized query
 
         return cursor.fetchall()
+    except mysql.connector.Error as e:
+        raise DatabaseException(AppConstants.DATABASE_RETRIEVAL_ERROR + str(e))
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
+
+def create_image_processor_request_table():
+    conn = None
+    cursor = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)  # Fetch rows as dictionaries
+
+        query = Queries.CREATE_IMAGE_PROCESSOR_REQUEST_TABLE
+        cursor.execute(query)  # Parameterized query
+
+    except mysql.connector.Error as e:
+        raise DatabaseException(AppConstants.DATABASE_RETRIEVAL_ERROR + str(e))
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
+def create_webhook_subscription_table():
+    conn = None
+    cursor = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)  # Fetch rows as dictionaries
+
+        query = Queries.CREATE_WEBHOOK_SUBSCRIPTION_TABLE
+        cursor.execute(query)  # Parameterized query
+
+    except mysql.connector.Error as e:
+        raise DatabaseException(AppConstants.DATABASE_RETRIEVAL_ERROR + str(e))
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+    
+
+def register_webhook(webhook_url, request_id):
+    conn = None
+    cursor = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)  # Fetch rows as dictionaries
+
+        query = Queries.INSERT_WEBHOOK_SUBSCRIPTION
+        cursor.execute(query, (webhook_url, request_id))  # Parameterized query
+        conn.commit()
+        
+        return True
+    except mysql.connector.Error as e:
+        if conn:
+            conn.rollback()
+        raise DatabaseException(AppConstants.DATABASE_INSERTION_ERROR + str(e))
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
+
+def get_webhook(request_id):
+    conn = None
+    cursor = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)  # Fetch rows as dictionaries
+
+        query = Queries.GET_WEBHOOK_FROM_REQUEST_ID
+        cursor.execute(query, (request_id,))  # Parameterized query
+
+        return cursor.fetchone()
     except mysql.connector.Error as e:
         raise DatabaseException(AppConstants.DATABASE_RETRIEVAL_ERROR + str(e))
     finally:
