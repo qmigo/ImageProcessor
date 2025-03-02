@@ -1,31 +1,33 @@
-from flask import Flask, request
-import mysql.connector
+from flask import Flask, request, jsonify
+import concurrent.futures
+import uuid
+from services.request_processor_service import process_request
+from services.file_processor_service import process_file
+from exceptions.exceptions import FileNotFoundException
+from constants.app_constants import AppConstants
 
 app = Flask(__name__)
 
-def get_db_connection():
-    connection = mysql.connector.connect(
-        host='gateway01.ap-southeast-1.prod.aws.tidbcloud.com',
-        user='21YmjuJeBcuBTgR.root',
-        password='7xfC0BJo2Iabph2I',
-        database='public',
-        port=4000
-    )
-    return connection
-
 @app.route('/upload', methods=['POST'])
-def upload_file():
-    file_payload = request.files.get('file', None)
+def upload():
+    file_payload = request.files.get('file')
     if not file_payload:
-        return "File Payload is missing, check if key is set to file"
-    
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("select * from user")
-    users = cursor.fetchall()
-    print(users)
+        raise FileNotFoundException(AppConstants.FILE_NOT_FOUND_EXCEPTION_MSG)
 
-    return "hi"
+    products = process_file(file_payload)  
+
+    request_id = str(uuid.uuid4())
+
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        executor.map(
+            lambda product: [
+                process_request(request_id, product[AppConstants.PRODUCT_NAME_PARAMETER], img_url)
+                for img_url in product[AppConstants.INPUT_IMAGE_URLS_PARAMETER].split(",")
+            ], 
+            products
+        )
+
+    return jsonify({"request_id": request_id}), 202 
 
 if __name__ == '__main__':
     app.run(debug=True, port=5500)
