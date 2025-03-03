@@ -38,6 +38,12 @@ def safe_process_request(request_id, product_name, img_url):
     except Exception as e:
         print(f"Error processing request: {request_id}, Product: {product_name}, Image: {img_url}, Error: {e}")
 
+@app.route('/', methods=['GET'])
+def home():
+    return jsonify({
+        "msg": "Service is running. Kindly check documentation to use application"
+    })
+
 @app.route('/upload', methods=['POST'])
 def upload():
     """
