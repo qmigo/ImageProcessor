@@ -31,3 +31,5 @@ python app:app
 ```
 https://documenter.getpostman.com/view/15331466/2sAYdioVbM
 ```
+
+To access all documentation navigate to /assets
