@@ -26,3 +26,8 @@ Here you can use local MySQL database connection parameters but you need a cloud
 ```
 python app:app
 ```
+
+6. Test application by using this postman collection
+```
+https://documenter.getpostman.com/view/15331466/2sAYdioVbM
+```
